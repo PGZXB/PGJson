@@ -13,14 +13,26 @@ public:
     ~MallocAllocator() = default;
 
     void * allocate(SizeType size) {
-        return ::malloc(size);
+        void * p = ::malloc(size);
+
+#ifdef PGJSON_WITH_CXX_EXCEPTION
+        if (!p) throw std::bad_alloc();
+#endif
+
+        return p;
     }
 
     void * reallocate(void * ptr, SizeType newSize) {
-        return ::realloc(ptr, newSize);
+        void * p = ::realloc(ptr, newSize);
+
+#ifdef PGJSON_WITH_CXX_EXCEPTION
+        if (!p) throw std::bad_alloc();
+#endif
+
+        return p;
     }
 
-    void deallocate(void * ptr) {
+    void deallocate(void * ptr) noexcept {
         free(ptr);
     }
 };
