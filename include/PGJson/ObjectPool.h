@@ -10,10 +10,10 @@
 #include <PGJson/utils.h>
 PGJSON_NAMESPACE_START
 
+
 // ObjectPool for Node, ObjectMember
 template<typename Type, typename Allocator = DefaultMemoryAllocator>
 class ObjectPool {
-private:
     using ObjectType = Type;
     using ObjectPtrType = Type *;
     using ObjectRefType = Type &;
@@ -26,6 +26,13 @@ private:
         BlockInfo(std::uint32_t blockIndexInChunk, std::uint32_t chunkIndexInChunks)
         : next(blockIndexInChunk, chunkIndexInChunks) {
 
+        }
+
+        bool operator== (const BlockInfo & other) {
+            PGJSON_DEBUG_ASSERT(next.magicTag == other.next.magicTag && next.magicTag == Next::MAGIC_TAG);
+
+            return next.blockIndexInChunk == other.next.blockIndexInChunk &&
+                   next.chunkIndexInChunks == other.next.chunkIndexInChunks;
         }
 
         struct Next {
@@ -43,19 +50,10 @@ private:
     };
 
     static constexpr SizeType DEFAULT_BLOCK_SIZE = max(sizeof(Type), sizeof(BlockInfo));
-    static constexpr std::uint16_t DEFAULT_BLOCK_NUM_PER_CHUNK = 64;
-    static constexpr std::uint32_t DEFAULT_CHUNK_NUM = 8;
+    static constexpr std::uint16_t DEFAULT_BLOCK_NUM_PER_CHUNK = 64;  // 64
+    static constexpr std::uint32_t DEFAULT_CHUNK_NUM = 8;  // 8
 
 public:
-    explicit ObjectPool(uint32_t chunksCapacity = DEFAULT_CHUNK_NUM)
-    : m_chunkNum(1),
-      m_chunksCapacity(chunksCapacity),
-      m_topBlockInfo(0, 0) {
-        m_chunks = reinterpret_cast<void**>(m_allocator.allocate(sizeof(void *) * chunksCapacity));
-        m_chunks[0] = m_allocator.allocate(DEFAULT_BLOCK_SIZE * DEFAULT_BLOCK_NUM_PER_CHUNK);
-        initChunk(m_chunks[0], 0);
-    }
-
     ~ObjectPool() {
         for (std::uint32_t i = 0; i < m_chunkNum; ++i) {  // release chunk in chunks one by one
             Byte * pBlock = reinterpret_cast<Byte *>(m_chunks[i]);
@@ -73,8 +71,8 @@ public:
     }
 
     template<typename... Args>
-    ObjectPtrType createObject(Args && ... args) {
-        //  extend(); if the top_block_info == NIL
+    ObjectPtrType createObject(Args && ... args) {  // can be better
+        extend();  // extend, check and extend
 
         Byte * ptr = reinterpret_cast<Byte *>(m_chunks[m_topBlockInfo.next.chunkIndexInChunks]);  // find chunk in chunks
         ptr += m_topBlockInfo.next.blockIndexInChunk * DEFAULT_BLOCK_SIZE;  // find block in chunk
@@ -95,7 +93,26 @@ public:
         ptr = nullptr;
     }
 
+
+    static ObjectPool * getInstance() {
+        static ObjectPool s_instance;
+
+        return &s_instance;
+    }
 private:
+    explicit ObjectPool(uint32_t chunksCapacity = DEFAULT_CHUNK_NUM)
+            : m_chunkNum(1),
+              m_chunksCapacity(chunksCapacity),
+              m_topBlockInfo(0, 0) {
+        m_chunks = reinterpret_cast<void**>(m_allocator.allocate(sizeof(void *) * chunksCapacity));
+        m_chunks[0] = newChunk();
+        initChunk(m_chunks[0], 0);
+    }
+
+    void * newChunk() {
+        return m_allocator.allocate(DEFAULT_BLOCK_SIZE * DEFAULT_BLOCK_NUM_PER_CHUNK);
+    }
+
     void initChunk(void * pChunk, uint32_t chunkIndexInChunks) {  // link all blocks in the chunk
         Byte * pbChunk = reinterpret_cast<Byte *>(pChunk);
         BlockInfo * ptr = nullptr;
@@ -127,6 +144,26 @@ private:
                     return;
                 }
             }
+        }
+    }
+
+    void extend() {
+        //      if the m_topBlockInfo == NIL:
+        //          if m_chunks is full:
+        //              reallocate m_chunks to m_chunksCapacity * 2
+        //              update m_chunksCapacity
+        //          add a Chunk and init it
+        //          update m_chunkNum
+        //          update m_topBlockInfo
+        if (m_topBlockInfo == BlockInfo::NIL) {
+            if (m_chunksCapacity == m_chunkNum)
+                m_chunks = reinterpret_cast<void**>(m_allocator.reallocate(m_chunks, sizeof(void *) * (m_chunksCapacity <<= 1U)));
+
+            m_chunks[m_chunkNum] = newChunk();
+            initChunk(m_chunks[m_chunkNum], m_chunkNum);
+
+            new (&m_topBlockInfo) BlockInfo(0, m_chunkNum);
+            ++m_chunkNum;
         }
     }
 

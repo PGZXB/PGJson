@@ -1,7 +1,6 @@
 //
 // Created by 42025 on 2021/2/26.
 //
-#define private public
 #include <PGJson/Node.h>
 #include <PGJson/ObjectPool.h>
 #include <iostream>
@@ -16,7 +15,7 @@ int main () {
 //    std::cout << node.getString() << "\n";
 //    std::cout << node.getStringLength() << "\n";
 
-    ObjectPool<Node> pool;
+    ObjectPool<Node> & pool = *ObjectPool<Node>::getInstance();
 
     pool.createObject();
     auto p = pool.createObject();
@@ -25,8 +24,6 @@ int main () {
     pool.createObject();
     pool.createObject();
     pool.createObject();
-
-
 
     p->setString(std::string("void"));
     std::cout << p->getString() << '\n';
@@ -48,14 +45,6 @@ int main () {
     std::cout << p->isObject() << "\n";
 
     pool.destroyObject(p);
-
-    ObjectPool<Node>::BlockInfo* ptr = (ObjectPool<Node>::BlockInfo*)p;
-    std::cout << ptr->next.blockIndexInChunk << '\n';
-    std::cout << ptr->next.chunkIndexInChunks << '\n';
-    std::cout << ptr->next.magicTag << '\n';
-    std::cout << ObjectPool<Node>::BlockInfo::Next::MAGIC_TAG << '\n';
-
-    std::cout << pool.m_topBlockInfo.next.blockIndexInChunk << '\n';
 
     return 0;
 }
