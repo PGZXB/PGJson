@@ -9,7 +9,15 @@
 #define PGJSON_NAMESPACE_START namespace pg { namespace base { namespace json {
 #define PGJSON_NAMESPACE_END } } }
 #define PGJSON_PASS (void(0))
+
+#define PGJSON_MALLOC(size) (DefaultMemoryAllocator::getGlobalInstance()->allocate((size)))
+#define PGJSON_REALLOC(ptr, newSize) (DefaultMemoryAllocator::getGlobalInstance()->reallocate((ptr), (newSize)))
+#define PGJSON_FREE(ptr) (DefaultMemoryAllocator::getGlobalInstance()->deallocate((ptr)))
+
+// #define PGJSON_DEBUG
 #define PGJSON_WITH_STL 1
+#define PGJSON_WITH_CXX_EXCEPTION 1
+
 
 #define PGJSON_STATIC_ASSERT_EX(msg, exp) static_assert(exp, msg)
 #define PGJSON_STATIC_ASSERT(exp) PGJSON_STATIC_ASSERT_EX("", exp)

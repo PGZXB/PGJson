@@ -8,7 +8,7 @@ add_definitions(-DPGJSON_DEBUG)
 set(CMAKE_CXX_STANDARD 11)
 
 include_directories(include)
-add_library(PGJson include/PGJson/fwd.h include/PGJson/Node.h src/Node.cpp include/PGJson/Allocator.h include/PGJson/ObjectPool.h include/PGJson/utils.h)
+add_library(PGJson include/PGJson/fwd.h include/PGJson/Node.h src/Node.cpp include/PGJson/Allocator.h include/PGJson/MemoryBlockPool.h include/PGJson/utils.h include/PGJson/Iterator.h)
 
 project(PGTest)
-add_executable(PGTest include src/main.cpp)
+add_executable(PGTest include src/Node.cpp src/main.cpp src/utils.cpp)

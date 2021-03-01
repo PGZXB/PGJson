@@ -1,8 +1,8 @@
 //
 // Created by 42025 on 2021/2/27.
 //
-#ifndef PGTEST_OBJECTPOOL_H
-#define PGTEST_OBJECTPOOL_H
+#ifndef PGTEST_MEMORYBLOCKPOOL_H
+#define PGTEST_MEMORYBLOCKPOOL_H
 
 #include <algorithm>
 #include <PGJson/fwd.h>
@@ -10,15 +10,26 @@
 #include <PGJson/utils.h>
 PGJSON_NAMESPACE_START
 
+template<SizeType BLOCK_SIZE>
+struct Block {
+    Byte data[BLOCK_SIZE];
+};
 
-// ObjectPool for Node, ObjectMember
-template<typename Type, typename Allocator = DefaultMemoryAllocator>
-class ObjectPool {
+// MemoryBlockPool for Node, ObjectMember
+// can be better
+template<SizeType BLOCK_SIZE, typename Type = Block<BLOCK_SIZE>, typename Allocator = DefaultMemoryAllocator>
+class MemoryBlockPool {  // MemoryBlockPool
+    using BlockType = const Block<BLOCK_SIZE>;
+    using BlockPtrType = BlockType *;
+    using BlockRefType = BlockType &;
+    using ConstBlockPtrType = const BlockType *;
+    using ConstBlockRefType = const BlockType &;
+
     using ObjectType = Type;
-    using ObjectPtrType = Type *;
-    using ObjectRefType = Type &;
-    using ConstObjectPtrType = const Type *;
-    using ConstObjectRefType = const Type &;
+    using ObjectPtrType = ObjectType *;
+    using ObjectRefType = ObjectType &;
+    using ConstObjectPtrType = const ObjectType *;
+    using ConstObjectRefType = const ObjectType &;
 
     struct BlockInfo {  // 8 bytes
         static const BlockInfo NIL;
@@ -49,12 +60,23 @@ class ObjectPool {
         } next;
     };
 
+    PGJSON_STATIC_ASSERT_EX("BLOCK_SIZE should equals to the size of Type", BLOCK_SIZE == sizeof(Type));
+
     static constexpr SizeType DEFAULT_BLOCK_SIZE = max(sizeof(Type), sizeof(BlockInfo));
     static constexpr std::uint16_t DEFAULT_BLOCK_NUM_PER_CHUNK = 64;  // 64
     static constexpr std::uint32_t DEFAULT_CHUNK_NUM = 8;  // 8
 
 public:
-    ~ObjectPool() {
+    explicit MemoryBlockPool(uint32_t chunksCapacity = DEFAULT_CHUNK_NUM)
+            : m_chunkNum(1),
+              m_chunksCapacity(chunksCapacity),
+              m_topBlockInfo(0, 0) {
+        m_chunks = reinterpret_cast<void**>(m_allocator.allocate(sizeof(void *) * chunksCapacity));
+        m_chunks[0] = newChunk();
+        initChunk(m_chunks[0], 0);
+    }
+
+    ~MemoryBlockPool() {
         for (std::uint32_t i = 0; i < m_chunkNum; ++i) {  // release chunk in chunks one by one
             Byte * pBlock = reinterpret_cast<Byte *>(m_chunks[i]);
             for (std::uint16_t j = 0; j < DEFAULT_BLOCK_NUM_PER_CHUNK; ++j, pBlock += DEFAULT_BLOCK_SIZE) {  // deconstruct objects
@@ -71,7 +93,63 @@ public:
     }
 
     template<typename... Args>
-    ObjectPtrType createObject(Args && ... args) {  // can be better
+    ObjectPtrType createTypedBlock(Args && ... args) {  // can be better
+        const void * ptr = reinterpret_cast<const void *>(createBlock());
+        void * ptr_ = const_cast<void *>(ptr);
+
+        return new (ptr_) ObjectType(std::forward<Args>(args)...);  // construct object and return
+    }
+
+    void releaseTypedBlock(ObjectPtrType /*&*/ pBlock) {
+        if (checkBlockUsed(pBlock)) pBlock->~ObjectType();  // deconstruct object
+        releaseBlock(pBlock);
+    }
+
+//    ObjectPtrType * createTypedBlockArray(SizeType num) {
+//        ObjectPtrType * res = m_allocator.allocate(sizeof(void *) * num);
+//
+//        for (SizeType i = 0; i < num; ++i) {
+//            res[i] = reinterpret_cast<ObjectPtrType>(createBlock());
+//        }
+//
+//        return res;
+//    }
+//
+//    ObjectPtrType * reserveTypeBlockArray(ObjectPtrType * blockArray, SizeType oldSize, SizeType newSize) {
+//        if (oldSize == newSize) return blockArray;
+//
+//        if (newSize < oldSize) {
+//            for (SizeType i = newSize; i < oldSize; ++i) {
+//                releaseTypedBlock(blockArray[i]);
+//            }
+//            return m_allocator.reallocate(newSize);
+//        }
+//
+//        ObjectPtrType * res = m_allocator.reallocate(newSize);
+//
+//        for (SizeType i = oldSize; i < newSize; ++i) {
+//            res[i] = createBlock();
+//        }
+//
+//        return res;
+//    }
+//
+//    void releaseTypedBlockArray(ObjectPtrType * blockArray, SizeType size) {
+//        for (SizeType i = 0; i < size; ++i) {
+//            releaseTypedBlock(blockArray[i]);
+//        }
+//
+//        m_allocator.deallocate(blockArray);
+//    }
+
+    static MemoryBlockPool * getGlobalInstance() {
+        static MemoryBlockPool s_instance;
+
+        return &s_instance;
+    }
+
+private:
+    BlockPtrType createBlock() {
         extend();  // extend, check and extend
 
         Byte * ptr = reinterpret_cast<Byte *>(m_chunks[m_topBlockInfo.next.chunkIndexInChunks]);  // find chunk in chunks
@@ -79,34 +157,17 @@ public:
 
         m_topBlockInfo = *reinterpret_cast<BlockInfo *>(ptr);  // update the m_topBlockInfo
 
-        return new (ptr) ObjectType(std::forward<Args>(args)...);  // construct object and return
+        return reinterpret_cast<BlockPtrType>(ptr);
     }
 
-    void destroyObject(ObjectPtrType /*&*/ ptr) {
-        ptr->~ObjectType();  // construct object
-        new (ptr) BlockInfo(m_topBlockInfo);  // construct BlockInfo on *ptr
+    void releaseBlock(void * pBlock) {
+        new (pBlock) BlockInfo(m_topBlockInfo);  // construct BlockInfo on *pBlock
         getBlockIndex(  // update the m_topBlockInfo
-            ptr,
-            &m_topBlockInfo.next.blockIndexInChunk,
-            &m_topBlockInfo.next.chunkIndexInChunks
+                pBlock,
+                &m_topBlockInfo.next.blockIndexInChunk,
+                &m_topBlockInfo.next.chunkIndexInChunks
         );
-        ptr = nullptr;
-    }
-
-
-    static ObjectPool * getInstance() {
-        static ObjectPool s_instance;
-
-        return &s_instance;
-    }
-private:
-    explicit ObjectPool(uint32_t chunksCapacity = DEFAULT_CHUNK_NUM)
-            : m_chunkNum(1),
-              m_chunksCapacity(chunksCapacity),
-              m_topBlockInfo(0, 0) {
-        m_chunks = reinterpret_cast<void**>(m_allocator.allocate(sizeof(void *) * chunksCapacity));
-        m_chunks[0] = newChunk();
-        initChunk(m_chunks[0], 0);
+        pBlock = nullptr;
     }
 
     void * newChunk() {
@@ -175,11 +236,16 @@ private:
     Allocator m_allocator;
 };
 
-template<typename Type, typename Allocator>
-const typename ObjectPool<Type, Allocator>::BlockInfo ObjectPool<Type, Allocator>::BlockInfo::NIL{
+template<SizeType BLOCK_SIZE, typename Type, typename Allocator>
+const typename MemoryBlockPool<BLOCK_SIZE, Type, Allocator>::BlockInfo MemoryBlockPool<BLOCK_SIZE, Type, Allocator>::BlockInfo::NIL{
     std::numeric_limits<std::uint16_t>::max(),
     std::numeric_limits<std::uint32_t>::max()
 };
 
+template<typename Type, typename Allocator = MallocAllocator>
+class ObjectPool : public MemoryBlockPool<sizeof(Type), Type, Allocator> {
+
+};
+
 PGJSON_NAMESPACE_END
-#endif //PGTEST_OBJECTPOOL_H
+#endif //PGTEST_MEMORYBLOCKPOOL_H

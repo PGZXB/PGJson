@@ -7,6 +7,10 @@
 #include <limits>
 #include <cstring>
 #include <PGJson/fwd.h>
+#include <PGJson/utils.h>
+#include <PGJson/Allocator.h>
+#include <PGJson/Iterator.h>
+
 
 #ifdef PGJSON_WITH_STL
 #include <iostream>
@@ -31,9 +35,61 @@ namespace {
     constexpr Enum NullFlags = TypeFlag::NullFlag;
 }
 
-struct ObjectMember;
+class Node;
+class ObjectMember;
+
+template<SizeType BLOCK_SIZE, typename Type, typename Allocator>
+class MemoryBlockPool;
+
+//class ArrayIterator : public PoPSeqIterator<Node> {
+//    friend class Node;
+//public:
+//    using PoPSeqIterator::PoPSeqIterator;
+//
+//private:
+//    explicit ArrayIterator(Node ** pPtr) : PoPSeqIterator(pPtr) {
+//
+//    }
+//};
+
+//using ArrayIterator = PoPSeqIterator<Node>;
+
+//class ConstArrayIterator : public PoPSeqIterator<const Node> {
+//    friend class Node;
+//public:
+//    using PoPSeqIterator::PoPSeqIterator;
+//
+//private:
+//    explicit ConstArrayIterator(Node ** pPtr) : PoPSeqIterator(pPtr) {
+//
+//    }
+//};
+//
+//class ObjectMemberIterator : public PoPSeqIterator<ObjectMember> {
+//    friend class Node;
+//public:
+//    using PoPSeqIterator::PoPSeqIterator;
+//
+//private:
+//    explicit ObjectMemberIterator(ObjectMember ** pPtr) : PoPSeqIterator(pPtr) {
+//
+//    }
+//};
+//
+//class ConstObjectMemberIterator : public PoPSeqIterator<const ObjectMember> {
+//    friend class Node;
+//public:
+//    using PoPSeqIterator::PoPSeqIterator;
+//
+//private:
+//    explicit ConstObjectMemberIterator(ObjectMember ** pPtr) : PoPSeqIterator(pPtr) {
+//
+//    }
+//};
 
 class Node {
+    friend class MemoryBlockPool<32, Node, DefaultMemoryAllocator>;
+
     union Variant;
 
     union Number {
@@ -43,7 +99,7 @@ class Node {
     };
 
     struct String {
-        static constexpr uint8_t SMALL_STRING_MAX_SIZE = 22;
+        static constexpr uint8_t SMALL_STRING_MAX_SIZE = 2;
         // uint64_t hashcode;
         union {
             struct {  // normal-string
@@ -58,15 +114,19 @@ class Node {
     };
 
     struct Object {
+        static constexpr SizeType DEFAULT_CAPACITY = 4;
+
         SizeType size = 0;
         SizeType capacity = 0;
-        ObjectMember * members = nullptr;
+        ObjectMember ** members = nullptr;
     };
 
     struct Array {
+        static constexpr SizeType DEFAULT_CAPACITY = 4;
+
         SizeType size = 0;
         SizeType capacity = 0;
-        Node * values = nullptr;
+        Node ** values = nullptr;
     };
 
     union Variant {
@@ -75,14 +135,19 @@ class Node {
         Object object;
         Array array;
     };
+public:
+    using ArrayIterator = PoPSeqIterator<Node>;
+    using ConstArrayIterator = PoPSeqIterator<const Node>;
+    using MemberItertor = PoPSeqIterator<ObjectMember>;
+    using ConstMemberIterator = const PoPSeqIterator<const ObjectMember>;
 
 public:
-    Node() = default;
-    ~Node() {
-        std::cout << __FUNCTION__ << "\n";
-    }
+    ~Node() = default;
 
-    Enum getType() const { return m_typeFlags; }
+    Enum getType() const {
+        ArrayIterator::value_type i;
+        return m_typeFlags; }
+
     bool isNull() const { return is(TypeFlag::NullFlag); }
     bool isFalse() const { return is(TypeFlag::FalseFlag); }
     bool isTrue() const { return is(TypeFlag::TrueFlag); }
@@ -184,34 +249,7 @@ public:
         return m_data.str.length;
     }
 
-    void setString(const Char * str, SizeType length = std::numeric_limits<SizeType>::max()) {
-        // if length == SizeType's max, the last Char of str must be 0, truncate the str by Char-0
-        // else we think len(str) equals to the param length, don't truncate the str by Char-0
-
-        // reset
-        reset(StringFlags);
-
-        if (length == std::numeric_limits<SizeType>::max())
-            // length = pgjson_strlen(str);
-            PGJSON_PASS;
-
-        // small-string, if the true-length <= String::SMALL_STRING_MAX_SIZE
-        if (length <= String::SMALL_STRING_MAX_SIZE) {
-            _m_smallStringUsed = true;
-            std::memcpy(m_data.str.sData, str, length);
-            m_data.str.sLen = static_cast<std::uint8_t>(length);
-            return;
-        }
-
-        // if the true-length is more than String::SMALL_STRING_MAX_SIZE
-        // allocate memory
-        // void * ptr = PGJsonStringAllocator::allocate(length);
-        // copy string from str to ptr
-        // std::memcpy(ptr, str, length);
-        // _m_smallStringUsed = false;
-        // m_data.str.data = static_cast<Char*>(ptr);
-        // m_data.str.length = length;
-    }
+    void setString(const Char * str, SizeType length = std::numeric_limits<SizeType>::max());
 
 #ifdef PGJSON_WITH_STL
     void setString(const std::basic_string<Char> & str) {
@@ -220,8 +258,110 @@ public:
 #endif
 
     // Array
+    void setArray() {
+        reset(ArrayFlags);
+    }
+
+    Node & operator[] (SizeType index) {
+        PGJSON_DEBUG_ASSERT_EX(__func__, isArray());
+        PGJSON_DEBUG_ASSERT_EX("index < size", index < m_data.array.size);
+
+        return *m_data.array.values[index];
+    }
+
+    const Node & operator[] (SizeType index) const {
+        return const_cast<Node &>(*this)[index];
+    }
+
+    SizeType size() const {
+        PGJSON_DEBUG_ASSERT_EX(__func__, isArray());
+
+        return m_data.array.size;
+    }
+
+    SizeType capacity() const {
+        PGJSON_DEBUG_ASSERT_EX(__func__, isArray());
+
+        return m_data.array.capacity;
+    }
+
+    ArrayIterator begin() {
+        PGJSON_DEBUG_ASSERT_EX(__func__, isArray());
+
+        return ArrayIterator(m_data.array.values);
+    }
+
+    ArrayIterator end() {
+        PGJSON_DEBUG_ASSERT_EX(__func__, isArray());
+
+        return ArrayIterator(m_data.array.values + m_data.array.size);
+    }
+
+    ConstArrayIterator begin() const {
+        return ConstArrayIterator(const_cast<Node &>(*this).begin());
+    }
+
+    ConstArrayIterator end() const {
+        return ConstArrayIterator(const_cast<Node &>(*this).end());
+    }
+
+    bool empty() const {
+        PGJSON_DEBUG_ASSERT_EX(__func__, isArray());
+
+        return m_data.array.size == 0;
+    }
+
+    void reserve(SizeType newCapacity)  {
+        PGJSON_DEBUG_ASSERT_EX("IsArray", isArray());
+        PGJSON_DEBUG_ASSERT_EX("Reserve Invalid", m_data.array.size <= newCapacity);
+
+        m_data.array.values = reinterpret_cast<Node **>(reinterpret_cast<void **>(
+                PGJSON_REALLOC(m_data.array.values, sizeof(void *) * (newCapacity + 1))
+        ));
+        m_data.array.capacity = newCapacity;
+    }
+
+    void pushBack(Node * pNode) {
+        PGJSON_DEBUG_ASSERT_EX(__func__, isArray());
+
+        // extend
+        if (m_data.array.size == m_data.array.capacity)
+            reserve(m_data.array.capacity == 0 ? Array::DEFAULT_CAPACITY : m_data.array.capacity << 1U);
+
+        // push-pNode-back
+        m_data.array.values[m_data.array.size] = pNode;
+        ++m_data.array.size;
+    }
+
+    void popBack();
+
+    void clear();
+
+    void remove(const ArrayIterator & begin, const ArrayIterator & end);
+
+    void remove(const ArrayIterator& iterator)  {
+        remove(iterator, iterator + 1);
+    }
+
+    ArrayIterator erase(const ArrayIterator& iterator) {
+        remove(iterator);
+        return iterator;
+    }
+
+    ArrayIterator erase(const ArrayIterator & begin, const ArrayIterator & end) {
+        remove(begin, end);
+        return begin;
+    }
     // Object
+
+    // create
+    static Node * create();
+
+    template<typename ... Args>
+    static Node * create(Args && ... args);
 private:
+    Node() = default;
+
     bool is(Enum typeFlags) const { return (m_typeFlags & typeFlags) != 0; }
 
     void reset(Enum typeFlags) {
@@ -235,10 +375,10 @@ private:
     bool _m_smallStringUsed = true;  // declared here for saving memory
 };
 
-// struct ObjectMember {
-//     const Char * name;
-//     Node value;
-// };
+template<typename... Args>
+inline pg::base::json::Node * pg::base::json::Node::create(Args &&... args) {
+    return new (create()) Node(std::forward<Args>(args)...);
+}
 
 PGJSON_NAMESPACE_END
 #endif //PGJSON_NODE_H

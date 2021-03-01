@@ -4,6 +4,7 @@
 #ifndef PGTEST_ALLOCATOR_H
 #define PGTEST_ALLOCATOR_H
 
+#include <new>
 #include <PGJson/fwd.h>
 PGJSON_NAMESPACE_START
 
@@ -34,6 +35,12 @@ public:
 
     void deallocate(void * ptr) noexcept {
         free(ptr);
+    }
+
+    static MallocAllocator * getGlobalInstance() {
+        static MallocAllocator s_instance;
+
+        return &s_instance;
     }
 };
 
