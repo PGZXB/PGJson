@@ -12,14 +12,14 @@ PGJSON_NAMESPACE_START
 
 template<SizeType BLOCK_SIZE>
 struct Block {
-    Byte data[BLOCK_SIZE];
+    Byte data[BLOCK_SIZE] = { 0 };
 };
 
 // MemoryBlockPool for Node, ObjectMember
 // can be better
 template<SizeType BLOCK_SIZE, typename Type = Block<BLOCK_SIZE>, typename Allocator = DefaultMemoryAllocator>
 class MemoryBlockPool {  // MemoryBlockPool
-    using BlockType = const Block<BLOCK_SIZE>;
+    using BlockType = Type;
     using BlockPtrType = BlockType *;
     using BlockRefType = BlockType &;
     using ConstBlockPtrType = const BlockType *;
@@ -81,7 +81,7 @@ public:
             Byte * pBlock = reinterpret_cast<Byte *>(m_chunks[i]);
             for (std::uint16_t j = 0; j < DEFAULT_BLOCK_NUM_PER_CHUNK; ++j, pBlock += DEFAULT_BLOCK_SIZE) {  // deconstruct objects
                 if (checkBlockUsed(pBlock)) {  // deconstruct object
-                    auto pObject = reinterpret_cast<ObjectPtrType>(m_chunks[i]);
+                    auto pObject = reinterpret_cast<ObjectPtrType>(pBlock);
                     pObject->~ObjectType();
                 }
             }
@@ -143,12 +143,10 @@ public:
 //    }
 
     static MemoryBlockPool * getGlobalInstance() {
-        static MemoryBlockPool s_instance;
 
-        return &s_instance;
+        return s_pInstance;
     }
-
-private:
+public:
     BlockPtrType createBlock() {
         extend();  // extend, check and extend
 
@@ -170,6 +168,7 @@ private:
         pBlock = nullptr;
     }
 
+private:
     void * newChunk() {
         return m_allocator.allocate(DEFAULT_BLOCK_SIZE * DEFAULT_BLOCK_NUM_PER_CHUNK);
     }
@@ -227,6 +226,8 @@ private:
             ++m_chunkNum;
         }
     }
+public:
+    static MemoryBlockPool * s_pInstance;
 
 private:
     void ** m_chunks = nullptr;
@@ -235,6 +236,9 @@ private:
     BlockInfo m_topBlockInfo;
     Allocator m_allocator;
 };
+
+template<SizeType BLOCK_SIZE, typename Type, typename Allocator>
+MemoryBlockPool<BLOCK_SIZE, Type, Allocator> * MemoryBlockPool<BLOCK_SIZE, Type, Allocator>::s_pInstance = nullptr;
 
 template<SizeType BLOCK_SIZE, typename Type, typename Allocator>
 const typename MemoryBlockPool<BLOCK_SIZE, Type, Allocator>::BlockInfo MemoryBlockPool<BLOCK_SIZE, Type, Allocator>::BlockInfo::NIL{

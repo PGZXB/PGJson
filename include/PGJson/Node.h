@@ -7,87 +7,42 @@
 #include <limits>
 #include <cstring>
 #include <PGJson/fwd.h>
+#include <PGJson/String.h>
 #include <PGJson/utils.h>
 #include <PGJson/Allocator.h>
 #include <PGJson/Iterator.h>
 
-
 #ifdef PGJSON_WITH_STL
-#include <iostream>
+    #include <iostream>
     #include <string>
 #endif
 
 PGJSON_NAMESPACE_START
 
-namespace {
-    constexpr Enum InvalidFlags = TypeFlag::InvalidFlag;
-    constexpr Enum FalseFlags = TypeFlag::FalseFlag | TypeFlag::BoolFlag;
-    constexpr Enum TrueFlags = TypeFlag::TrueFlag | TypeFlag::BoolFlag;
-    constexpr Enum BoolFlags = TypeFlag::BoolFlag;
-    constexpr Enum StringFlags = TypeFlag::StringFlag;
-    constexpr Enum NumberFlags = TypeFlag::NumberFlag;
-    constexpr Enum Int64Flags = TypeFlag::IntegerFlag | TypeFlag::NumberFlag;
-    constexpr Enum UInt64Flags = TypeFlag::UIntegerFlag | TypeFlag::NumberFlag;
-    constexpr Enum DoubleFlags = TypeFlag::DoubleFlag | TypeFlag::NumberFlag;
-    constexpr Enum RawFlags = TypeFlag::RawFlag;
-    constexpr Enum ObjectFlags = TypeFlag::ObjectFlag;
-    constexpr Enum ArrayFlags = TypeFlag::ArrayFlag;
-    constexpr Enum NullFlags = TypeFlag::NullFlag;
-}
+constexpr struct CreateObjectTag {} objectTag;
+constexpr struct CreateArrayTag{} arrayTag;
 
 class Node;
-class ObjectMember;
+struct ObjectMember;
 
 template<SizeType BLOCK_SIZE, typename Type, typename Allocator>
 class MemoryBlockPool;
 
-//class ArrayIterator : public PoPSeqIterator<Node> {
-//    friend class Node;
-//public:
-//    using PoPSeqIterator::PoPSeqIterator;
-//
-//private:
-//    explicit ArrayIterator(Node ** pPtr) : PoPSeqIterator(pPtr) {
-//
-//    }
-//};
-
-//using ArrayIterator = PoPSeqIterator<Node>;
-
-//class ConstArrayIterator : public PoPSeqIterator<const Node> {
-//    friend class Node;
-//public:
-//    using PoPSeqIterator::PoPSeqIterator;
-//
-//private:
-//    explicit ConstArrayIterator(Node ** pPtr) : PoPSeqIterator(pPtr) {
-//
-//    }
-//};
-//
-//class ObjectMemberIterator : public PoPSeqIterator<ObjectMember> {
-//    friend class Node;
-//public:
-//    using PoPSeqIterator::PoPSeqIterator;
-//
-//private:
-//    explicit ObjectMemberIterator(ObjectMember ** pPtr) : PoPSeqIterator(pPtr) {
-//
-//    }
-//};
-//
-//class ConstObjectMemberIterator : public PoPSeqIterator<const ObjectMember> {
-//    friend class Node;
-//public:
-//    using PoPSeqIterator::PoPSeqIterator;
-//
-//private:
-//    explicit ConstObjectMemberIterator(ObjectMember ** pPtr) : PoPSeqIterator(pPtr) {
-//
-//    }
-//};
-
 class Node {
+    static constexpr Enum InvalidFlags = TypeFlag::InvalidFlag;
+    static constexpr Enum FalseFlags = TypeFlag::FalseFlag | TypeFlag::BoolFlag;
+    static constexpr Enum TrueFlags = TypeFlag::TrueFlag | TypeFlag::BoolFlag;
+    static constexpr Enum BoolFlags = TypeFlag::BoolFlag;
+    static constexpr Enum StringFlags = TypeFlag::StringFlag;
+    static constexpr Enum NumberFlags = TypeFlag::NumberFlag;
+    static constexpr Enum Int64Flags = TypeFlag::IntegerFlag | TypeFlag::NumberFlag;
+    static constexpr Enum UInt64Flags = TypeFlag::UIntegerFlag | TypeFlag::NumberFlag;
+    static constexpr Enum DoubleFlags = TypeFlag::DoubleFlag | TypeFlag::NumberFlag;
+    static constexpr Enum RawFlags = TypeFlag::RawFlag;
+    static constexpr Enum ObjectFlags = TypeFlag::ObjectFlag;
+    static constexpr Enum ArrayFlags = TypeFlag::ArrayFlag;
+    static constexpr Enum NullFlags = TypeFlag::NullFlag;
+
     friend class MemoryBlockPool<32, Node, DefaultMemoryAllocator>;
 
     union Variant;
@@ -96,21 +51,6 @@ class Node {
         std::int64_t i64;
         std::uint64_t u64;
         double d;
-    };
-
-    struct String {
-        static constexpr uint8_t SMALL_STRING_MAX_SIZE = 2;
-        // uint64_t hashcode;
-        union {
-            struct {  // normal-string
-                SizeType length;
-                const Char * data;
-            };
-            struct {  // small string, max-byte-size : 22
-                Byte sData[23] = { 0 };
-                std::uint8_t sLen = 0;
-            };
-        };
     };
 
     struct Object {
@@ -138,16 +78,18 @@ class Node {
 public:
     using ArrayIterator = PoPSeqIterator<Node>;
     using ConstArrayIterator = PoPSeqIterator<const Node>;
-    using MemberItertor = PoPSeqIterator<ObjectMember>;
+    using MemberIterator = PoPSeqIterator<ObjectMember>;
     using ConstMemberIterator = const PoPSeqIterator<const ObjectMember>;
 
 public:
-    ~Node() = default;
+    ~Node();
 
+    // type
     Enum getType() const {
-        ArrayIterator::value_type i;
-        return m_typeFlags; }
+        return m_typeFlags;
+    }
 
+    bool isValid() const { return m_typeFlags != InvalidFlags; }
     bool isNull() const { return is(TypeFlag::NullFlag); }
     bool isFalse() const { return is(TypeFlag::FalseFlag); }
     bool isTrue() const { return is(TypeFlag::TrueFlag); }
@@ -232,11 +174,12 @@ public:
 
         m_data.number.d = d;
     }
+
     // String
     const Char * getString() const {
         PGJSON_DEBUG_ASSERT_EX(__func__, isString());
 
-        if (_m_smallStringUsed) return reinterpret_cast<const Char *>(m_data.str.sData);
+        if (m_data.str.usingSmall) return reinterpret_cast<const Char *>(m_data.str.sData);
 
         return m_data.str.data;
     }
@@ -244,12 +187,19 @@ public:
     SizeType getStringLength() const {  // the number of Char, which equals to std::strlen(m_data.str.data) if Char == char
         PGJSON_DEBUG_ASSERT_EX(__func__, isString());
 
-        if (_m_smallStringUsed) return m_data.str.sLen;
+        if (m_data.str.usingSmall) return m_data.str.sLen;
 
         return m_data.str.length;
     }
 
     void setString(const Char * str, SizeType length = std::numeric_limits<SizeType>::max());
+
+    template<SizeType LEN>
+    void setString(const Char (&str)[LEN]) {
+        PGJSON_STATIC_ASSERT(LEN > 0);
+
+        setString(&str[0], LEN);
+    }
 
 #ifdef PGJSON_WITH_STL
     void setString(const std::basic_string<Char> & str) {
@@ -260,17 +210,10 @@ public:
     // Array
     void setArray() {
         reset(ArrayFlags);
-    }
 
-    Node & operator[] (SizeType index) {
-        PGJSON_DEBUG_ASSERT_EX(__func__, isArray());
-        PGJSON_DEBUG_ASSERT_EX("index < size", index < m_data.array.size);
-
-        return *m_data.array.values[index];
-    }
-
-    const Node & operator[] (SizeType index) const {
-        return const_cast<Node &>(*this)[index];
+        m_data.array.size = 0;
+        m_data.array.capacity = 0;
+        m_data.array.values = nullptr;
     }
 
     SizeType size() const {
@@ -323,6 +266,7 @@ public:
 
     void pushBack(Node * pNode) {
         PGJSON_DEBUG_ASSERT_EX(__func__, isArray());
+        PGJSON_DEBUG_ASSERT_EX(__func__, pNode != nullptr);
 
         // extend
         if (m_data.array.size == m_data.array.capacity)
@@ -333,15 +277,18 @@ public:
         ++m_data.array.size;
     }
 
+    template<typename ... Args>
+    void emplaceBack(Args && ... args) {
+        pushBack(Node::create(std::forward<Args>(args)...));
+    }
+
     void popBack();
 
-    void clear();
+    void remove(const ArrayIterator & begin, const ArrayIterator & end, bool keepOrder = true);  // 待修改
 
-    void remove(const ArrayIterator & begin, const ArrayIterator & end);
-
-    void remove(const ArrayIterator& iterator)  {
+    void remove(const ArrayIterator& iterator, bool keepOrder = true)  {
         remove(iterator, iterator + 1);
-    }
+    }  // 待实现
 
     ArrayIterator erase(const ArrayIterator& iterator) {
         remove(iterator);
@@ -352,13 +299,210 @@ public:
         remove(begin, end);
         return begin;
     }
+
     // Object
+    void setObject() {
+        reset(ObjectFlags);
+
+        m_data.object.capacity = 0;
+        m_data.object.size = 0;
+        m_data.object.members = nullptr;
+    }
+
+    SizeType memberCount() const {
+        PGJSON_DEBUG_ASSERT_EX(__func__, isObject());
+
+        return m_data.object.size;
+    }
+
+    SizeType memberCapacity() {
+        PGJSON_DEBUG_ASSERT_EX(__func__, isObject());
+
+        return m_data.object.capacity;
+    }
+
+    Node & operator[] (const Char * name);
+
+    const Node & operator[] (const Char * name) const {
+        return const_cast<Node &>(*this)[name];
+    }
+
+#ifdef PGJSON_WITH_STL
+    Node & operator[] (const std::basic_string<Char> & name) {
+        return (*this)[name.c_str()];
+    }
+
+    const Node & operator[] (const std::basic_string<Char> & name) const {
+        return const_cast<Node &>(*this)[name];
+    }
+#endif
+
+    bool hasMember(const Char * name) const {
+        return getMember(name) != memberEnd();
+    }
+
+#ifdef PGJSON_WITH_STL
+    bool hasMember(const std::basic_string<Char> & name) const {
+        return getMember(name) != memberEnd();
+    }
+#endif
+
+    MemberIterator memberBegin() {
+        PGJSON_DEBUG_ASSERT_EX(__func__, isObject());
+
+        return MemberIterator(m_data.object.members);
+    }
+
+    ConstMemberIterator memberBegin() const {
+        PGJSON_DEBUG_ASSERT_EX(__func__, isObject());
+
+        return ConstMemberIterator(m_data.object.members);
+    }
+
+    MemberIterator memberEnd() {
+        PGJSON_DEBUG_ASSERT_EX(__func__, isObject());
+
+        return MemberIterator(m_data.object.members + m_data.object.size);
+    }
+
+    ConstMemberIterator memberEnd() const {
+        PGJSON_DEBUG_ASSERT_EX(__func__, isObject());
+
+        return ConstMemberIterator(m_data.object.members + m_data.object.size);
+    }
+
+    void memberReverse(SizeType newCapacity) {
+        PGJSON_DEBUG_ASSERT_EX("IsObject", isObject());
+        PGJSON_DEBUG_ASSERT_EX("Reserve Invalid", m_data.object.size <= newCapacity);
+
+        m_data.object.members = reinterpret_cast<ObjectMember **>(reinterpret_cast<void **>(
+                PGJSON_REALLOC(m_data.object.members, sizeof(void *) * (newCapacity + 1))
+        ));
+        m_data.object.capacity = newCapacity;
+    }
+
+    MemberIterator getMember(SizeType index) {
+        PGJSON_DEBUG_ASSERT_EX(__func__, isObject());
+        PGJSON_DEBUG_ASSERT_EX(__func__, index < m_data.object.size);
+
+        return memberBegin() + index;
+    }
+
+    ConstMemberIterator getMember(SizeType index) const {
+        return {const_cast<Node &>(*this).getMember(index)};
+    }
+
+    MemberIterator getMember(const Char * name);
+
+    ConstMemberIterator getMember(const Char * name) const {
+        return {const_cast<Node &>(*this).getMember(name)};
+    }
+
+//    template<SizeType LEN>
+//    MemberIterator getMember(const Char (&name)[LEN]);
+//
+//    template<SizeType LEN>
+//    ConstMemberIterator getMember(const Char (&name)[LEN]);
+
+#ifdef PGJSON_WITH_STL
+    MemberIterator getMember(const std::basic_string<Char> & name);
+
+    ConstMemberIterator getMember(const std::basic_string<Char> & name) const {
+        return {const_cast<Node &>(*this).getMember(name)};
+    }
+#endif
+
+    void addMember(ObjectMember * pMember) {
+        PGJSON_DEBUG_ASSERT_EX(__func__, isObject());
+        PGJSON_DEBUG_ASSERT_EX(__func__, pMember != nullptr);
+
+        // extend
+        if (m_data.object.size == m_data.object.capacity)
+            memberReverse(m_data.object.capacity == 0 ? Object::DEFAULT_CAPACITY : m_data.object.capacity << 1U);
+
+        // push-pNode-back
+        m_data.object.members[m_data.object.size] = pMember;
+        ++m_data.object.size;
+    }
+
+    template<typename ... Args>
+    MemberIterator addMember(const Char * name, Args && ... args) {
+        // alloc
+        Node * pValue = nullptr;
+        ObjectMember * pMember = newUninitializedMember(name, &pValue);
+
+        // construct
+        new (pValue) Node(std::forward<Args>(args)...);
+
+        // add
+        addMember(pMember);
+
+        return memberEnd() - 1;
+    }
+
+#ifdef PGJSON_WITH_STL
+    template<typename ... Args>
+    MemberIterator addMember(const std::basic_string<Char> & name, Args && ... args) {
+        return addMember(name.c_str(), std::forward<Args>(args)...);
+    }
+#endif
+
+    bool removeMember(const Char * name) {
+        auto iter = getMember(name);
+        if (iter == memberEnd()) return false;
+
+        removeMember(iter);
+
+        return true;
+    }
+
+#ifdef PGJSON_WITH_STL
+    bool removeMember(const std::basic_string<Char> & name) {
+        auto iter = getMember(name);
+        if (iter == memberEnd()) return false;
+
+        removeMember(iter);
+
+        return true;
+    }
+#endif
+
+    void removeMember(const MemberIterator & begin, const MemberIterator & end, bool keepOrder = true);  // 待修改
+
+    void removeMember(const MemberIterator & itertor, bool keepOrder = true) {  // 待修改
+        removeMember(itertor, itertor + 1);
+    }
+
+    MemberIterator eraseMember(const MemberIterator & begin, const MemberIterator & end) {
+        removeMember(begin, end);
+        return begin;
+    }
+
+    MemberIterator eraseMember(const MemberIterator & itertor) {
+        removeMember(itertor);
+        return itertor;
+    }
+
+    // shared-API
+    Node & operator[] (SizeType index);
+
+    const Node & operator[] (SizeType index) const {  // Object Array -> member value
+        return const_cast<Node &>(*this)[index];
+    }
+
+    void clear();  // All types, clear but don't change type
 
     // create
     static Node * create();
 
     template<typename ... Args>
     static Node * create(Args && ... args);
+
+    static void release(Node * pNode);
+
+private:
+    static ObjectMember * newUninitializedMember(const Char * name, Node ** ppValue = nullptr);
+
 private:
     Node() = default;
 
@@ -371,14 +515,23 @@ private:
 
 private:
     Variant m_data{};
-    Enum m_typeFlags = TypeFlag::InvalidFlag;
-    bool _m_smallStringUsed = true;  // declared here for saving memory
+    Enum m_typeFlags = InvalidFlags;
 };
+
 
 template<typename... Args>
 inline pg::base::json::Node * pg::base::json::Node::create(Args &&... args) {
     return new (create()) Node(std::forward<Args>(args)...);
 }
+
+struct ObjectMember {
+    ~ObjectMember() {
+        name.destroy();
+    }
+
+    String name;
+    Node value;
+};
 
 PGJSON_NAMESPACE_END
 #endif //PGJSON_NODE_H

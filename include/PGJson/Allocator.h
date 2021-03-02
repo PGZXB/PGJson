@@ -38,10 +38,11 @@ public:
     }
 
     static MallocAllocator * getGlobalInstance() {
-        static MallocAllocator s_instance;
 
-        return &s_instance;
+        return s_pInstance;
     }
+
+    static MallocAllocator * s_pInstance;
 };
 
 using DefaultMemoryAllocator = MallocAllocator;

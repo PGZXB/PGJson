@@ -5,10 +5,11 @@
 #define PGJSON_FWD_H
 
 #include <cstdint>
-
+#include <iostream>  // ONLY FOR TEST
 #define PGJSON_NAMESPACE_START namespace pg { namespace base { namespace json {
 #define PGJSON_NAMESPACE_END } } }
 #define PGJSON_PASS (void(0))
+#define PGJSON_MIN_CPP_VERSION 201103L
 
 #define PGJSON_MALLOC(size) (DefaultMemoryAllocator::getGlobalInstance()->allocate((size)))
 #define PGJSON_REALLOC(ptr, newSize) (DefaultMemoryAllocator::getGlobalInstance()->reallocate((ptr), (newSize)))

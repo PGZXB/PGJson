@@ -3,7 +3,7 @@
 //
 #include <PGJson/Node.h>
 
-//#include <PGJson/MemoryBlockPool.h>
+#include <PGJson/MemoryBlockPool.h>
 #include <algorithm>
 #include <vector>
 #include <list>
@@ -12,116 +12,51 @@
 
 using namespace pg::base::json;
 
-#define TEST_ARRAY(pArray) \
-    std::cout << "size : " << (pArray)->size() << " \n"; \
-    std::cout << "capacity : " << (pArray)->capacity() << " \n"
-
-bool cmpNodeNumber(const Node & n1, const Node & n2) {
-    PGJSON_DEBUG_ASSERT_EX(__func__, n1.isNumber());
-    PGJSON_DEBUG_ASSERT_EX(__func__, n2.isNumber());
-
-    return n1.getDouble() < n2.getDouble();
-}
-
 int main () {
+    MallocAllocator::s_pInstance = new MallocAllocator();
+    MemoryBlockPool<sizeof(Node), Node>::s_pInstance = new MemoryBlockPool<sizeof(Node), Node>();
+    MemoryBlockPool<sizeof(ObjectMember), ObjectMember>::s_pInstance = new MemoryBlockPool<sizeof(ObjectMember), ObjectMember>();
 
-    Node * array = Node::create();
+    Node * object = Node::create();
+    object->setObject();
 
-    Node * numbers[20] = { nullptr };
+    object->addMember("ADDDDDDD")->value.setInt64(1);
+    object->addMember("BDDDDDDD")->value.setInt64(2);
+    object->addMember("CDDDDDDD")->value.setInt64(3);
+    object->addMember("DDDDDDDD")->value.setInt64(4);
+    object->addMember("EDDDDDDD")->value.setInt64(5);
+    object->addMember("FDDDDDDD")->value.setInt64(6);
+    object->addMember("GDDDDDDD")->value.setInt64(7);
+    object->addMember("HDDDDDDDDD")->value.setInt64(8);
+    object->addMember("IDDDDDDDDD")->value.setInt64(9);
+    object->addMember("GDDDDDDDDD")->value.setInt64(10);
 
-    for (auto & number : numbers) {
-        number = Node::create();
-        number->setInt64(std::rand() % 1000);
+    for (auto iter = object->memberBegin(), end = object->memberEnd(); iter != end; ++iter) {
+        std::cout << (const Char *)iter->name.getCString() << " : " << iter->value.getInt64() << "\n";
     }
 
-    numbers[9]->setInt64(666);
-    numbers[10]->setInt64(456);
-
-    for (auto & number : numbers) {
-        std::cout << number->getInt64() << ", ";
-    } std::cout << "\b\b \n";
-
-    array->setArray();
-    TEST_ARRAY(array);
-
-    for (auto & number : numbers) {
-        array->pushBack(number);
-    }
-
-    TEST_ARRAY(array);
-
-    array->begin();
-    array->end();
-
-    for (int i = 0; i < array->size(); ++i) {
-        std::cout << (*array)[i].getInt64() << ", ";
-    } std::cout << "\b\b \n";
-
-    for (auto & e : *array) {
-        std::cout << e.getInt64() << ", ";
-    } std::cout << "\b\b \n";
-
-    std::sort(array->begin(), array->end(), cmpNodeNumber);
-
-    TEST_ARRAY(array);
-
-    for (auto & e : *array) {
-        std::cout << e.getInt64() << ", ";
-    } std::cout << "\b\b \n";
-
-    array->popBack();
-    array->popBack();
-    array->popBack();
-    array->popBack();
-    array->popBack();
-
-    TEST_ARRAY(array);
-
-    for (auto & e : *array) {
-        std::cout << e.getInt64() << ", ";
-    } std::cout << "\b\b \n\n";
-
-    for (auto iter = array->begin(); iter != array->end(); ++iter) {
-        if (iter->getInt64() == 456) {
-            array->remove(iter);
-            std::cout << iter->getInt64() << "\n";
-        }
-//        if (iter->getInt64() == 666) {
-//            array->remove(iter);
-//            std::cout << iter->getInt64() << "\n";
-//        }
-    }
-
-    for (auto & e : *array) {
-        std::cout << e.getInt64() << ", ";
-    } std::cout << "\b\b \n";
-
-    TEST_ARRAY(array);
-
-    std::list<Node> test(array->begin(), array->end());
-
-    array->remove(array->begin() + 1, array->begin() + 4);
-
-//    array->clear();
-
-    std::cout << "\n{";
-    for (auto iter = array->begin(); iter != array->end(); ++iter) {
-        std::cout << iter->getInt64() << ", ";
+    std::cout << "{";
+    for (SizeType i = 0; i < object->memberCount(); ++i) {
+        std::cout << (*object)[i].getInt64() << ", ";
     } std::cout << "}\n";
 
-    TEST_ARRAY(array);
+    for (auto iter = object->memberBegin(), end = object->memberEnd(); iter != end; ++iter) {
+        PGJSON_DEBUG_ASSERT((*object)[iter->name.getCString()].getInt64() == iter->value.getInt64());
+        std::cout << iter->name.getCString() << " : " << (*object)[iter->name.getCString()].getInt64() << " " << iter->value.getInt64() << "\n";
+    }
 
+    object->removeMember(object->memberBegin(), object->memberBegin() + 2);
 
-//    for (auto & e : test) {
-//        std::cout << e.getInt64() << ", ";
-//    } std::cout << "\b\b\n";
-//
-//    for (auto iter = test.begin(); iter != test.end(); ++iter) {
-//        if (iter->getInt64() == 666) {
-//            iter = test.erase(iter);
-//            std::cout << iter->getInt64() << "\n";
-//        }
-//    }
+    std::cout << "{";
+    for (SizeType i = 0; i < object->memberCount(); ++i) {
+        std::cout << (*object)[i].getInt64() << ", ";
+    } std::cout << "}\n";
 
+    object->clear();
+    std::cout << object->memberCount() << "\n";
+
+    delete MemoryBlockPool<sizeof(Node), Node>::s_pInstance;
+    delete MemoryBlockPool<sizeof(ObjectMember), ObjectMember>::s_pInstance;
+    delete MallocAllocator::s_pInstance;
     return 0;
 }
