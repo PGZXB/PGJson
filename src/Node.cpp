@@ -109,7 +109,7 @@ void pg::base::json::Node::removeMember(const pg::base::json::Node::MemberIterat
                                         const pg::base::json::Node::MemberIterator &end, bool keepOrder) {
     PGJSON_DEBUG_ASSERT_EX(__func__, isObject());
     PGJSON_DEBUG_ASSERT_EX(__func__, begin >= memberBegin());
-    PGJSON_DEBUG_ASSERT_EX(__func__, begin < end);
+    PGJSON_DEBUG_ASSERT_EX(__func__, begin <= end);
     PGJSON_DEBUG_ASSERT_EX(__func__, end <= memberEnd());
 
     ArrayIterator::difference_type lo = begin - memberBegin();

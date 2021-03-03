@@ -45,7 +45,8 @@ int main () {
         std::cout << iter->name.getCString() << " : " << (*object)[iter->name.getCString()].getInt64() << " " << iter->value.getInt64() << "\n";
     }
 
-    object->removeMember(object->memberBegin(), object->memberBegin() + 2);
+    object->removeMember(object->memberBegin(), object->memberEnd() - 2);
+
 
     std::cout << "{";
     for (SizeType i = 0; i < object->memberCount(); ++i) {
