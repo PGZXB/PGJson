@@ -5,7 +5,7 @@
 #define PGJSON_FWD_H
 
 #include <cstdint>
-#include <iostream>  // ONLY FOR TEST
+//#include <iostream>  // ONLY FOR TEST
 #define PGJSON_NAMESPACE_START namespace pg { namespace base { namespace json {
 #define PGJSON_NAMESPACE_END } } }
 #define PGJSON_PASS (void(0))
@@ -28,15 +28,16 @@
     #include <cstdio>
     #include <cassert>
 
-    #define PGJSON_ASSERT_IF(x) for ( ; !(x) ; assert(x) )
+    #define PGJSON_ASSERT_IF(x) for ( ; !(x) ; assert(x))
 
     #define PGJSON_DEBUG_ASSERT(exp) \
-        PGJSON_ASSERT_IF(exp) PGJSON_PASS
+        PGJSON_ASSERT_IF(exp) break
 
     #define PGJSON_DEBUG_ASSERT_EX(msg, exp) \
         PGJSON_ASSERT_IF((exp)) { \
             std::fputs(msg, stderr); \
             std::fputs(" : \n", stderr); \
+            break; \
         } PGJSON_PASS
 #else
     #define PGJSON_ASSERT_IF(x) PGJSON_PASS
@@ -68,6 +69,19 @@ namespace TypeFlag {
     constexpr Enum NullFlag = 1U << 11U;
 
 }
+
+constexpr SizeType DEFAULT_BUFFER_SIZE = 512;
+constexpr SizeType PGJSON_CHAR_SIZE = sizeof(Char);
+
+// class Stream {
+// public:
+//     Char peek();
+//     Char get();
+//     SizeType tell();
+//
+//     void put();
+//     void flush();
+// };
 
 PGJSON_NAMESPACE_END
 #endif //PGJSON_FWD_H
