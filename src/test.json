@@ -1,7 +1,0 @@
-{
-    "sites": [
-    { "name":"cainiao" , "url":"www.runoob.com" },
-    { "name":"google" , "url":"www.google.com" }
-    ],
-    "copy" : {"sites" : [{"name" : "cainiao", "url" : "www.runoob.com"}, {"name" : "google", "url" : "www.google.com"}]}
-}
