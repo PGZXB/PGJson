@@ -15,34 +15,72 @@
 #define PGJSON_REALLOC(ptr, newSize) (DefaultMemoryAllocator::getGlobalInstance()->reallocate((ptr), (newSize)))
 #define PGJSON_FREE(ptr) (DefaultMemoryAllocator::getGlobalInstance()->deallocate((ptr)))
 
-// #define PGJSON_DEBUG
+// PGJson-Use
 #define PGJSON_WITH_STL 1
 #define PGJSON_WITH_CXX_EXCEPTION 1
 
+// Parse-Info
+#define PGJSON_PARSE_ERROR_EXIT 1
+#define PGJSON_PARSE_ERROR_RETURN 1
+#define PGJSON_PARSE_ERROR_LOG 1
+
+// json-standard
+#define PGJSON_ALLOW_AFTER_LAST_ITEM_HAS_COMMA 1
+#define PGJSON_ALLOW_ONE_LINE_COMMENTS 1
+// #define PGJSON_ALLOW_MULTI_LINE_COMMENTS 1
 
 #define PGJSON_STATIC_ASSERT_EX(msg, exp) static_assert(exp, msg)
 #define PGJSON_STATIC_ASSERT(exp) PGJSON_STATIC_ASSERT_EX("", exp)
+
+#if defined(PGJSON_PARSE_ERROR_EXIT) || defined(PGJSON_PARSE_ERROR_RETURN) || defined(PGJSON_PARSE_ERROR_LOG)
+    #include <cstdio>
+#endif
+
+#ifdef PGJSON_PARSE_ERROR_EXIT  // 待实现, assert失败回收资源
+    #define PGJSON_PARSE_ASSERT_EX(msg, exp) \
+        if (!(exp)) { \
+            std::fputs((msg), stderr); \
+            assert((exp)); \
+        } PGJSON_PASS
+#elif defined(PGJSON_PARSE_ERROR_RETURN)  // 待实现, 设置errno, errmsg
+    #define PGJSON_PARSE_ASSERT_EX(msg, exp) \
+        if (!(exp)) { \
+            std::fputs((msg), stderr); \
+            return; \
+        } PGJSON_PASS
+#elif defined(PGJSON_PARSE_ERROR_LOG)
+    #define PGJSON_PARSE_ASSERT_EX(msg, exp) \
+        if (!(exp)) { \
+            std::fputs((msg), stderr); \
+        } PGJSON_PASS
+#else
+    #define PGJSON_PARSE_ASSERT_EX(msg, exp) PGJSON_PASS
+#endif
+
 
 #ifdef PGJSON_DEBUG
 
     #include <cstdio>
     #include <cassert>
+    #include <string>
 
-    #define PGJSON_ASSERT_IF(x) for ( ; !(x) ; assert(x))
+    #define PGJSON_ASSERT_IF(x) for ( ; !(x) ; )
 
     #define PGJSON_DEBUG_ASSERT(exp) \
-        PGJSON_ASSERT_IF(exp) break
+        PGJSON_ASSERT_IF(exp) { assert(exp); break; } \
+        PGJSON_PASS
 
     #define PGJSON_DEBUG_ASSERT_EX(msg, exp) \
         PGJSON_ASSERT_IF((exp)) { \
             std::fputs(msg, stderr); \
             std::fputs(" : \n", stderr); \
+            assert(exp); \
             break; \
         } PGJSON_PASS
 #else
-    #define PGJSON_ASSERT_IF(x) PGJSON_PASS
-    #define PGJSON_ASSERT(exp) PGJSON_PASS
-    #define PGJSON_ASSERT_EX(msg, exp) PGJSON_PASS
+    #define PGJSON_DEBUG_ASSERT_IF(x) PGJSON_PASS
+    #define PGJSON_DEBUG_ASSERT(exp) PGJSON_PASS
+    #define PGJSON_DEBUG_ASSERT_EX(msg, exp) PGJSON_PASS
 #endif
 
 PGJSON_NAMESPACE_START

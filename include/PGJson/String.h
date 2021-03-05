@@ -41,7 +41,7 @@ struct String {
         };
     };
 
-    const Char * getCString() {
+    const Char * getCString() const {
         if (usingSmall) return reinterpret_cast<const Char *>(sData);
         return data;
     }

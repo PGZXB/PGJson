@@ -4,6 +4,7 @@
 #include <PGJson/Node.h>
 #include <PGJson/MemoryBlockPool.h>
 #include <PGJson/FileStream.h>
+#include <PGJson/Parser.h>
 
 #include <algorithm>
 #include <vector>
@@ -14,9 +15,9 @@
 using namespace pg::base::json;
 
 int main () {
-//    MallocAllocator::s_pInstance = new MallocAllocator();
-//    MemoryBlockPool<sizeof(Node), Node>::s_pInstance = new MemoryBlockPool<sizeof(Node), Node>();
-//    MemoryBlockPool<sizeof(ObjectMember), ObjectMember>::s_pInstance = new MemoryBlockPool<sizeof(ObjectMember), ObjectMember>();
+    MallocAllocator::s_pInstance = new MallocAllocator();
+    MemoryBlockPool<sizeof(Node), Node>::s_pInstance = new MemoryBlockPool<sizeof(Node), Node>();
+    MemoryBlockPool<sizeof(ObjectMember), ObjectMember>::s_pInstance = new MemoryBlockPool<sizeof(ObjectMember), ObjectMember>();
 //
 //    Node * object = Node::create();
 //    object->setObject();
@@ -57,22 +58,25 @@ int main () {
 //    object->clear();
 //    std::cout << object->memberCount() << "\n";
 //
-//    delete MemoryBlockPool<sizeof(Node), Node>::s_pInstance;
-//    delete MemoryBlockPool<sizeof(ObjectMember), ObjectMember>::s_pInstance;
-//    delete MallocAllocator::s_pInstance;
 
-    FileStream<> fileStream("../src/main.cpp", ReadMode);
-    FileStream<> fileWriteStream("../src/test.txt", WriteMode);
+    FileStream<> fileStream("../src/test.json", ReadMode);
 
-    while (!fileStream.eof()) {
-        Char ch = fileStream.get();
-        fileWriteStream.put(ch);
-        std::fputc(ch, stdout);
-    }
+    // in test.json
+    // {
+    //     "sites": [
+    //     { "name":"cainiao" , "url":"www.runoob.com" },
+    //     { "name":"google" , "url":"www.google.com" },
+    //     ]
+    // }
 
-//    std::cout << "\n" << fileStream.tell() << "\n";
+    Node * node = Node::create();
 
-    fileWriteStream.flush();
+    parse(fileStream, node);
 
+    std::cout << node->toDebugString() << "\n";
+
+    delete MemoryBlockPool<sizeof(Node), Node>::s_pInstance;
+    delete MemoryBlockPool<sizeof(ObjectMember), ObjectMember>::s_pInstance;
+    delete MallocAllocator::s_pInstance;
     return 0;
 }

@@ -184,3 +184,23 @@ pg::base::json::Node::~Node() {
 
     m_typeFlags = Node::InvalidFlags;
 }
+
+// for debug
+#ifdef PGJSON_DEBUG
+std::string pg::base::json::Node::objectToDebugString() const {
+    std::string res = "{";
+    for (auto iter = memberBegin(); iter != memberEnd(); ++iter) {
+        res.append(1, '\"').append(iter->name.getCString()).append("\" : ").append(iter->value.toDebugString()).append(", ");
+    }
+
+    const SizeType len = res.length();
+    if (len >= 3) {
+        res[len - 2] = '}';
+        res.pop_back();
+    } else {
+        res.push_back('}');
+    }
+
+    return res;
+}
+#endif

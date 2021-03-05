@@ -118,6 +118,26 @@ public:
         return u64 <= limitUInt32::max();
     }
 
+    // Null
+    void setNull() {
+        reset(NullFlags);
+    }
+
+    // Boolean
+    void setFalse() {
+        reset(FalseFlags);
+    }
+
+    void setTrue() {
+        reset(TrueFlags);
+    }
+
+    bool getBool() const {
+        PGJSON_DEBUG_ASSERT_EX(__func__, isBool());
+
+        return isTrue();
+    }
+
     // Number
     std::int32_t getInt32() const {
         PGJSON_DEBUG_ASSERT_EX(__func__, isInt32());
@@ -278,8 +298,9 @@ public:
     }
 
     template<typename ... Args>
-    void emplaceBack(Args && ... args) {
+    ArrayIterator emplaceBack(Args && ... args) {
         pushBack(Node::create(std::forward<Args>(args)...));
+        return end() - 1;
     }
 
     void popBack();
@@ -492,6 +513,42 @@ public:
 
     void clear();  // All types, clear but don't change type
 
+    // for Debug
+#ifdef PGJSON_DEBUG
+
+    std::string toDebugString() const {
+        if (!isValid()) return "InValid";
+        if (isNull()) return "null";
+        if (isFalse()) return "false";
+        if (isTrue()) return "true";
+        if (isNumber()) return std::to_string(getDouble());
+        if (isString()) {
+            std::string res = "\"";
+            return res.append(getString()).append("\"");
+        }
+
+        if (isArray()) {
+            std::string res = "[";
+            for (const auto & e : *this) {
+                res.append(e.toDebugString()).append(", ");
+            }
+            if (res.size() >= 3) {
+                res.pop_back();
+                res.pop_back();
+            }
+            res.push_back(']');
+            return res;
+        }
+
+        if (isObject()) {
+            return objectToDebugString();
+        }
+
+        return "NOTIMPL";
+    }
+
+#endif
+
     // create
     static Node * create();
 
@@ -513,6 +570,9 @@ private:
         m_typeFlags = typeFlags;
     }
 
+#ifdef PGJSON_DEBUG
+    std::string objectToDebugString() const;
+#endif
 private:
     Variant m_data{};
     Enum m_typeFlags = InvalidFlags;

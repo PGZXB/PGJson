@@ -5,6 +5,7 @@
 #define PGTEST_ALLOCATOR_H
 
 #include <new>
+#include <cstdlib>
 #include <PGJson/fwd.h>
 PGJSON_NAMESPACE_START
 
@@ -14,7 +15,7 @@ public:
     ~MallocAllocator() = default;
 
     void * allocate(SizeType size) {
-        void * p = ::malloc(size);
+        void * p = std::malloc(size);
 
 #ifdef PGJSON_WITH_CXX_EXCEPTION
         if (!p) throw std::bad_alloc();
@@ -24,7 +25,7 @@ public:
     }
 
     void * reallocate(void * ptr, SizeType newSize) {
-        void * p = ::realloc(ptr, newSize);
+        void * p = std::realloc(ptr, newSize);
 
 #ifdef PGJSON_WITH_CXX_EXCEPTION
         if (!p) throw std::bad_alloc();
@@ -34,7 +35,7 @@ public:
     }
 
     void deallocate(void * ptr) noexcept {
-        free(ptr);
+        std::free(ptr);
     }
 
     static MallocAllocator * getGlobalInstance() {
