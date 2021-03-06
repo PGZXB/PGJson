@@ -40,18 +40,21 @@
     #define PGJSON_PARSE_ASSERT_EX(msg, exp) \
         if (!(exp)) { \
             std::fputs((msg), stderr); \
+            std::fputs("\n", stderr); \
             assert((exp)); \
         } PGJSON_PASS
 #elif defined(PGJSON_PARSE_ERROR_RETURN)  // 待实现, 设置errno, errmsg
     #define PGJSON_PARSE_ASSERT_EX(msg, exp) \
         if (!(exp)) { \
             std::fputs((msg), stderr); \
+            std::fputs("\n", stderr); \
             return; \
         } PGJSON_PASS
 #elif defined(PGJSON_PARSE_ERROR_LOG)
     #define PGJSON_PARSE_ASSERT_EX(msg, exp) \
         if (!(exp)) { \
             std::fputs((msg), stderr); \
+            std::fputs("\n", stderr); \
         } PGJSON_PASS
 #else
     #define PGJSON_PARSE_ASSERT_EX(msg, exp) PGJSON_PASS

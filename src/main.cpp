@@ -4,6 +4,7 @@
 #include <PGJson/Node.h>
 #include <PGJson/MemoryBlockPool.h>
 #include <PGJson/FileStream.h>
+#include <PGJson/StringReadStream.h>
 #include <PGJson/Parser.h>
 
 #include <algorithm>
@@ -59,8 +60,17 @@ int main () {
 //    std::cout << object->memberCount() << "\n";
 //
 
-    FileStream<> fileStream("../src/test.json", ReadMode);
+//    FileStream<> fileStream("../src/test.json", ReadMode);
 
+    StringReadStream fileStream(
+"{\n"
+        "   \"sites\": [\n"
+        "   {\"name\" : \"ZhanSan\", \"age\" : 18, \"DD Len\" : 19.25},\n"
+        "   { \"name\":\"cainiao\" , \"url\":\"www.runoob.com\" },\n"
+        "   { \"name\":\"google\" , \"url\":\"www.google.com\" },\n"
+        "   ]\n"
+        "}\n"
+    );
     // in test.json
     // {
     //     "sites": [

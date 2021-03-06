@@ -233,6 +233,7 @@ void parseArray(STREAM & stream, NODE * node) {
         }
         else if (stream.peek() == ']')
             break;
+        else PGJSON_PARSE_ASSERT_EX("Parse Error, Missing Comma", false);
     }
 
     PGJSON_PARSE_ASSERT_EX("Parse Array Error", stream.peek() == ']');
@@ -277,31 +278,8 @@ void parseObject(STREAM & stream, NODE * node) {
         }
         else if (stream.peek() == '}')
             break;
+        else PGJSON_PARSE_ASSERT_EX("Parse Error, Missing Comma", false);
     }
-
-    // skip;
-    // while(true) {
-    //      let buffer;
-    //      parseString(stream, buffer);
-    //      let iter = addMember(buffer.data());
-    //      skip;
-    //      assert(peek == ':');
-    //      get;
-    //      skip;
-    //      parseValue(stream, &iter->value);
-    //      skip;
-    //    if (stream.peek() == ',') {
-    //        stream.get();
-    //        skip(stream);
-    //#ifdef PGJSON_ALLOW_AFTER_LAST_ITEM_HAS_COMMA
-    //        if (stream.peek() == '}') break;
-    //#else
-    //        PGJSON_PARSE_ASSERT_EX("Don\'t Allow \',\'", stream.peek() != '}');
-    //#endif
-    //    }
-    //    else if (stream.peek() == '}')
-    //        break;
-    // }
 
     PGJSON_PARSE_ASSERT_EX("Parse Object Error", stream.peek() == '}');
     stream.get();

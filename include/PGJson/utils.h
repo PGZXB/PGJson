@@ -76,5 +76,17 @@ inline constexpr bool stringEquals(const CHAR (&str)[LEN1], const CHAR * str2, S
     return (LEN1 == len2 && ( LEN1 == 0 || _stringEquals(str, str2)));
 }
 
+template<typename CHAR>
+SizeType copyCString(CHAR * dst, const CHAR * src) {
+    PGJSON_DEBUG_ASSERT_EX(__func__, dst != nullptr && src != nullptr);
+
+    Byte * dst_ = reinterpret_cast<Byte*>(src);
+    Byte * src_ = reinterpret_cast<Byte*>(src);
+    while((* dst_++ = * src_++) != '\0');
+
+    PGJSON_DEBUG_ASSERT_EX(__func__, dst_ - reinterpret_cast<Byte*>(dst) >= 1);
+
+    return dst_ - reinterpret_cast<Byte*>(dst) - 1;
+}
 PGJSON_NAMESPACE_END
 #endif //PGTEST_UTILS_H

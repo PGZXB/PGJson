@@ -521,7 +521,9 @@ public:
         if (isNull()) return "null";
         if (isFalse()) return "false";
         if (isTrue()) return "true";
-        if (isNumber()) return std::to_string(getDouble());
+        if (isInt64()) return std::to_string(getInt64());
+        if (isUInt64()) return std::to_string(getUInt64());
+        if (isDouble()) return std::to_string(getDouble());
         if (isString()) {
             std::string res = "\"";
             return res.append(getString()).append("\"");
