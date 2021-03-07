@@ -29,6 +29,10 @@ public:
         read();
     }
 
+    ~FileStream() {
+        if (m_flags == WriteFlag) flush();
+    }
+
     bool eof() {
         return m_current == m_bufferEnd && m_current != m_buffer + BUF_SIZE;
     }
@@ -53,11 +57,27 @@ public:
         return m_FILEWrapper.tell();
     }
 
-    void put(char ch) {
+    FileStream & put(Char ch) {
         PGJSON_DEBUG_ASSERT_EX("Write Only", m_flags == WriteFlag);
 
         *m_current = ch;
         if (++m_current == m_bufferEnd) write();
+
+        return *this;
+    }
+
+    FileStream & put(const void * src, SizeType bytes) {
+        PGJSON_DEBUG_ASSERT_EX("Write Only", m_flags == WriteFlag);
+
+        if (bytes < (m_bufferEnd - m_current) * PGJSON_CHAR_SIZE) {
+            std::memcpy(m_current, src, bytes);
+            m_current += bytes / PGJSON_CHAR_SIZE;
+        } else {
+            write();
+            m_FILEWrapper.write(src, bytes);
+        }
+
+        return *this;
     }
 
     bool flush() {

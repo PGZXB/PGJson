@@ -118,10 +118,12 @@ constexpr SizeType PGJSON_CHAR_SIZE = sizeof(Char);
 // public:
 //     Char peek();
 //     Char get();
-//     SizeType tell();
+//     Integer tell();
+//     bool eof();
 //
-//     void put();
-//     void flush();
+//     Stream & put(Char ch);
+//     Stream & put(const void *, SizeType bytes);
+//     bool flush();
 // };
 
 PGJSON_NAMESPACE_END

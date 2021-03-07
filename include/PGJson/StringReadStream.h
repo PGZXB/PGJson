@@ -23,16 +23,18 @@ public:
         init(cStr, getCStringLength(cStr), copy);
     }
 
-    template<SizeType LEN>
-    explicit StringReadStream(const Char (&cStr)[LEN], bool copy = false) : m_flags(CStrFlag) {
-        PGJSON_DEBUG_ASSERT_EX(__func__, LEN > 1);
+    // template<SizeType LEN>
+    // explicit StringReadStream(const Char (&cStr)[LEN], bool copy = false) : m_flags(CStrFlag) {
+    //     PGJSON_DEBUG_ASSERT_EX(__func__, LEN > 1);
+    //
+    //     init(cStr, LEN - 1, copy);
+    // }
 
-        init(cStr, LEN - 1, copy);
-    }
-
+#ifdef PGJSON_WITH_STL
     explicit StringReadStream(const std::string & str, bool copy = false) : m_flags(STDStringFlag) {
         init(str.data(), str.size(), copy);
     }
+#endif
 
     // only move, cannot copy
     StringReadStream(const StringReadStream &) = delete;

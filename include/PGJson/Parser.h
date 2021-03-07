@@ -4,10 +4,12 @@
 #ifndef PGTEST_PARSER_H
 #define PGTEST_PARSER_H
 
-#include <PGJson/fwd.h>
 #include <vector>
-#include <cctype>
 #include <cstring>
+#include <cctype>
+#include <cstdio>
+
+#include <PGJson/fwd.h>
 PGJSON_NAMESPACE_START
 
 // statement
@@ -320,6 +322,136 @@ NODE * parse(STREAM & istream, NODE * root) {
     parseObject(istream, root);
 
     return root;
+}
+
+template<typename STREAM, typename NODE>
+void toString(NODE * root, STREAM & ostream, SizeType level, bool fmt, SizeType tabLen, const Char * tab) {
+    if (!root->isValid()) ostream.put("\"<Invalid>\"", 11);
+    else if (root->isNull()) ostream.put("null", 4);
+    else if (root->isFalse()) ostream.put("false", 5);
+    else if (root->isTrue()) ostream.put("true", 4);
+    else if (root->isInt64()) {
+        char buf[25] = { 0 };
+        int len = std::snprintf(buf, sizeof(buf), "%lld", root->getInt64());
+        ostream.put(buf, len);
+    }
+    else if (root->isUInt64()) {
+        char buf[25] = { 0 };
+        int len = std::snprintf(buf, sizeof(buf), "%llu", root->getUInt64());
+        ostream.put(buf, len);
+    }
+    else if (root->isDouble()) {
+        char buf[30] = { 0 };
+        int len = std::snprintf(buf, sizeof(buf), "%f", root->getDouble());
+        ostream.put(buf, len);
+    }
+    else if (root->isString()) {
+        // \0 \n \r \t \" \' \\ .
+        ostream.put('\"');
+        const Char * ptr = root->getString();
+        SizeType len = root->getStringLength();
+        const Char * end = ptr + len;
+        for (; ptr != end; ++ptr) {
+            switch (*ptr) {
+            case '\0' : ostream.put('\\').put('0'); break;
+            case '\n' : ostream.put('\\').put('n'); break;
+            case '\r' : ostream.put('\\').put('r'); break;
+            case '\t' : ostream.put('\\').put('t'); break;
+            case '\"' : ostream.put('\\').put('\"'); break;
+            case '\'' : ostream.put('\\').put('\''); break;
+            case '\\' : ostream.put('\\').put('\\'); break;
+            default:
+                ostream.put(*ptr);
+                break;
+            }
+        }
+        ostream.put('\"');
+    }
+    else if (root->isArray()) {
+        ostream.put('[');
+        if (fmt) ostream.put('\n');
+        for (auto iter = root->begin(), end = root->end(); iter != end; ++iter) {
+            if (fmt) {
+                for (SizeType i = 0; i < level + 1; ++i) {
+                    ostream.put(tab, tabLen);
+                }
+            }
+            toString(&*iter, ostream, level + 1, fmt, tabLen, tab);
+            if (iter + 1 != end) ostream.put(',');
+            if (fmt) ostream.put('\n');
+        }
+        if (fmt) {
+            for (SizeType i = 0; i < level; ++i) {
+                ostream.put(tab, tabLen);
+            }
+        }
+        ostream.put(']');
+    }
+    else if (root->isObject()) {
+        ostream.put('{');
+        if (fmt) ostream.put('\n');
+        for (auto iter = root->memberBegin(), end = root->memberEnd(); iter != end; ++iter) {
+            if (fmt) {
+                for (SizeType i = 0; i < level + 1; ++i) {
+                    ostream.put(tab, tabLen);
+                }
+            }
+            ostream.put('\"');
+            const Char * ptr = iter->name.getCString();
+            SizeType len = iter->name.getLength();
+            const Char * sEnd = ptr + len;
+            for (; ptr != sEnd; ++ptr) {
+                switch (*ptr) {
+                    case '\0' : ostream.put('\\').put('0'); break;
+                    case '\n' : ostream.put('\\').put('n'); break;
+                    case '\r' : ostream.put('\\').put('r'); break;
+                    case '\t' : ostream.put('\\').put('t'); break;
+                    case '\"' : ostream.put('\\').put('\"'); break;
+                    case '\'' : ostream.put('\\').put('\''); break;
+                    case '\\' : ostream.put('\\').put('\\'); break;
+                    default:
+                        ostream.put(*ptr);
+                        break;
+                }
+            }
+            ostream.put('\"').put(' ').put(':').put(' ');
+            toString(&(iter->value), ostream, level + 1, fmt, tabLen, tab);
+            if (iter + 1 != end) ostream.put(',');
+            if (fmt) ostream.put('\n');
+        }
+        if (fmt) {
+            for (SizeType i = 0; i < level; ++i) {
+                ostream.put(tab, tabLen);
+            }
+        }
+        ostream.put('}');
+    }
+    else {
+        ostream.put("\"NOTIMPL\"", 9);
+    }
+}
+
+template<typename STREAM, typename NODE, SizeType LEN>
+void toString(NODE * root, STREAM & ostream, Char (&tab)[LEN]) {
+    PGJSON_DEBUG_ASSERT_EX(__func__, root != nullptr);
+    PGJSON_DEBUG_ASSERT_EX(__func__, tab != nullptr);
+
+    toString(root, ostream, 0, true, LEN - 1, tab);
+}
+
+template<typename STREAM, typename NODE>
+void toString(NODE * root, STREAM & ostream, const Char * tab) {
+    PGJSON_DEBUG_ASSERT_EX(__func__, root != nullptr);
+    PGJSON_DEBUG_ASSERT_EX(__func__, tab != nullptr);
+
+    toString(root, ostream, 0, true, getCStringLength(tab), tab);
+}
+
+template<typename STREAM, typename NODE>
+void toString(NODE * root, STREAM & ostream) {
+    PGJSON_DEBUG_ASSERT_EX(__func__, root != nullptr);
+
+    toString(root, ostream, 0, false, 0, nullptr);
 }
 
 PGJSON_NAMESPACE_END

@@ -46,6 +46,10 @@ struct String {
         return data;
     }
 
+    SizeType getLength() const {
+        return usingSmall ? sLen : length;
+    }
+
     void copyFrom(const Char * str, SizeType len = std::numeric_limits<SizeType>::max());
     void destroy();
 };

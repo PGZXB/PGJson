@@ -12,7 +12,10 @@ PGJSON_NAMESPACE_START
 class FILEWrapper {
 public:
     FILEWrapper(const char * name, const char * mode);
-    ~FILEWrapper() { close(); }
+    ~FILEWrapper() {
+        std::fflush(m_pFILE);
+        close();
+    }
 
     FILEWrapper(const FILEWrapper &) = delete;
     FILEWrapper(FILEWrapper && other) noexcept : m_pFILE(other.m_pFILE) {
