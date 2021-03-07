@@ -69,7 +69,7 @@ int main () {
         "   { \"name\":\"cainiao\" , \"url\":\"www.runoob.com\" },\n"
         "   { \"name\":\"google\" , \"url\":\"www.google.com\" },\n"
         "   ]\n"
-        "}\n"
+        "}\n", true
     );
     // in test.json
     // {

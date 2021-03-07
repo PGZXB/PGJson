@@ -64,6 +64,10 @@ public:
         return *this;
     }
 
+    ~StringReadStream() {
+        if (m_flags & CopyFlag) PGJSON_FREE(const_cast<Char *>(m_cStr));
+    }
+
     bool eof() const {
         return m_current == m_end;
     }
