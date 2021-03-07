@@ -18,16 +18,18 @@ int main () {
     MemoryBlockPool<sizeof(ObjectMember), ObjectMember>::s_pInstance = new MemoryBlockPool<sizeof(ObjectMember), ObjectMember>();
 
 
-    StringReadStream fileStream(
-"{\n"
-        "   \"sites\": [\n"
-        "   {\"name\" : \"ZhanSan\", \"age\" : 18, \"Len\" : 19.24},\n"
-        "   { \"name\":\"cainiao\" , \"url\": [\"www.runoob.com\", \"www.pp.com\"] },\n"
-        "   { \"name\":\"google\" , \"url\":\"www.google.com\" },\n"
-        "   ],\n"
-        "   \"msg\" : \"I\\tam\\tyour\\tteacher\"\n"
-        "}\n", true
-    );
+//    StringReadStream fileStream(
+//"{\n"
+//        "   \"sites\": [\n"
+//        "   {\"name\" : \"ZhanSan\", \"age\" : 18, \"Len\" : 19.24},\n"
+//        "   { \"name\":\"cainiao\" , \"url\": [\"www.runoob.com\", \"www.pp.com\"] },\n"
+//        "   { \"name\":\"google\" , \"url\":\"www.google.com\" },\n"
+//        "   ],\n"
+//        "   \"msg\" : \"I\\tam\\tyour\\tteacher\"\n"
+//        "}\n", true
+//    );
+
+    FileStream<> fileStream("../src/test-parse.json", ReadMode);
 
     FileStream<> fileStream2("../src/test-write.json", WriteMode);
 
@@ -35,33 +37,10 @@ int main () {
 
     parse(fileStream, node);
 
-    std::cout << node->toDebugString() << "\n";
+//    std::cout << node->toDebugString() << "\n";
 
     char tab[] = "\t";
     toString(node, fileStream2, tab);
-
-    // result
-    // {
-    //     "sites" : [
-    //     {
-    //         "name" : "ZhanSan",
-    //                 "age" : 18,
-    //                 "Len" : 19.240000
-    //     },
-    //     {
-    //         "name" : "cainiao",
-    //                 "url" : [
-    //         "www.runoob.com",
-    //                 "www.pp.com"
-    //         ]
-    //     },
-    //     {
-    //         "name" : "google",
-    //                 "url" : "www.google.com"
-    //     }
-    //     ],
-    //     "msg" : "I\tam\tyour\tteacher"
-    // }
 
     delete MemoryBlockPool<sizeof(Node), Node>::s_pInstance;
     delete MemoryBlockPool<sizeof(ObjectMember), ObjectMember>::s_pInstance;

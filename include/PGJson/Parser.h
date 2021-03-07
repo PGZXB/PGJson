@@ -36,7 +36,7 @@ template<typename STREAM>
 void skipWhiteChar(STREAM & stream) {
     // ' ' '\n' '\r' '\t'
     Char ch = stream.peek();
-    while (ch == ' ' || ch == '\r' || ch == '\n' || ch == '\t') {
+    while (ch == 0 || ch == ' ' || ch == '\r' || ch == '\n' || ch == '\t') {
         stream.get();
         ch = stream.peek();
     }
@@ -70,13 +70,14 @@ void parseString(STREAM & stream, std::vector<Char> & buffer) {
     PGJSON_PARSE_ASSERT_EX("Parse String Error", stream.peek() == '\"');
     stream.get();
 
+    // not decoding now
     while (stream.peek() != '\"') {
         Char ch = stream.get();
         if (ch == '\\') {
             switch (ch = stream.get()) {
-                case '0' :
-                    buffer.push_back('\0');
-                    break;
+                // case '0' :
+                //     buffer.push_back('\0');
+                //     break;
                 case 'n' :
                     buffer.push_back('\n');
                     break;
@@ -319,7 +320,8 @@ template<typename STREAM, typename NODE>
 NODE * parse(STREAM & istream, NODE * root) {
     skip(istream);
 
-    parseObject(istream, root);
+    PGJSON_PARSE_ASSERT_EX("Parse Error", istream.peek() == '{' || istream.peek() == '[');
+    parseValue(istream, root);
 
     return root;
 }
@@ -353,12 +355,11 @@ void toString(NODE * root, STREAM & ostream, SizeType level, bool fmt, SizeType 
         const Char * end = ptr + len;
         for (; ptr != end; ++ptr) {
             switch (*ptr) {
-            case '\0' : ostream.put('\\').put('0'); break;
             case '\n' : ostream.put('\\').put('n'); break;
             case '\r' : ostream.put('\\').put('r'); break;
             case '\t' : ostream.put('\\').put('t'); break;
             case '\"' : ostream.put('\\').put('\"'); break;
-            case '\'' : ostream.put('\\').put('\''); break;
+            // case '\'' : ostream.put('\\').put('\''); break;
             case '\\' : ostream.put('\\').put('\\'); break;
             default:
                 ostream.put(*ptr);
@@ -402,7 +403,6 @@ void toString(NODE * root, STREAM & ostream, SizeType level, bool fmt, SizeType 
             const Char * sEnd = ptr + len;
             for (; ptr != sEnd; ++ptr) {
                 switch (*ptr) {
-                    case '\0' : ostream.put('\\').put('0'); break;
                     case '\n' : ostream.put('\\').put('n'); break;
                     case '\r' : ostream.put('\\').put('r'); break;
                     case '\t' : ostream.put('\\').put('t'); break;

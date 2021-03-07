@@ -89,7 +89,7 @@ public:
 private:
     void read() {
         // m_current == m_bufferEnd == m_buffer : Read Over
-        if (m_current < m_bufferEnd) ++m_current;
+        if (m_current < m_bufferEnd - 1) ++m_current;
         else if (!eof()) {  // not eof
             // read
             SizeType bytes = m_FILEWrapper.read(m_buffer, BUF_SIZE * PGJSON_CHAR_SIZE);
