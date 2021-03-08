@@ -34,7 +34,7 @@ class MemoryBlockPool {  // MemoryBlockPool
     struct BlockInfo {  // 8 bytes
         static const BlockInfo NIL;
 
-        BlockInfo(std::uint32_t blockIndexInChunk, std::uint32_t chunkIndexInChunks)
+        BlockInfo(std::uint16_t blockIndexInChunk, std::uint32_t chunkIndexInChunks)
         : next(blockIndexInChunk, chunkIndexInChunks) {
 
         }
@@ -49,7 +49,7 @@ class MemoryBlockPool {  // MemoryBlockPool
         struct Next {
             static constexpr std::uint16_t MAGIC_TAG = 1693689493U % 65535U;
 
-            Next(std::uint32_t bi, std::uint32_t ci)
+            Next(std::uint16_t bi, std::uint32_t ci)
             : blockIndexInChunk(bi), chunkIndexInChunks(ci), magicTag(MAGIC_TAG) {
 
             }

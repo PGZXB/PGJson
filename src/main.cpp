@@ -18,18 +18,18 @@ int main () {
     MemoryBlockPool<sizeof(ObjectMember), ObjectMember>::s_pInstance = new MemoryBlockPool<sizeof(ObjectMember), ObjectMember>();
 
 
-//    StringReadStream fileStream(
-//"{\n"
-//        "   \"sites\": [\n"
-//        "   {\"name\" : \"ZhanSan\", \"age\" : 18, \"Len\" : 19.24},\n"
-//        "   { \"name\":\"cainiao\" , \"url\": [\"www.runoob.com\", \"www.pp.com\"] },\n"
-//        "   { \"name\":\"google\" , \"url\":\"www.google.com\" },\n"
-//        "   ],\n"
-//        "   \"msg\" : \"I\\tam\\tyour\\tteacher\"\n"
-//        "}\n", true
-//    );
+    StringReadStream fileStream(
+"{\n"
+        "   \"sites\": [\n"
+        "   {\"name\" : \"ZhanSan\", \"age\" : 18, \"Len\" : 19.24},\n"
+        "   { \"name\":\"cainiao\" , \"url\": [\"www.runoob.com\", \"www.pp.com\"] },\n"
+        "   { \"name\":\"google\" , \"url\":\"www.google.com\" },\n"
+        "   ],\n"
+        "   \"msg\" : \"I\\tam\\tyour\\tteacher\"\n"
+        "}\n", true
+    );
 
-    FileStream<> fileStream("../src/test-parse.json", ReadMode);
+    // FileStream<> fileStream("../src/test-parse.json", ReadMode);
 
     FileStream<> fileStream2("../src/test-write.json", WriteMode);
 

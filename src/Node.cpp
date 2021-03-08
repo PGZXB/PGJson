@@ -46,7 +46,7 @@ void pg::base::json::Node::remove(const pg::base::json::Node::ArrayIterator & be
     ArrayIterator::difference_type lo = begin - this->begin();
     ArrayIterator::difference_type hi = end - this->begin();
 
-    for (SizeType i = lo; i < hi; ++i) {
+    for (auto i = lo; i < hi; ++i) {
         NodePool::getGlobalInstance()->releaseTypedBlock(m_data.array.values[i]);
     }
 
@@ -115,7 +115,7 @@ void pg::base::json::Node::removeMember(const pg::base::json::Node::MemberIterat
     ArrayIterator::difference_type lo = begin - memberBegin();
     ArrayIterator::difference_type hi = end - memberBegin();
 
-    for (SizeType i = lo; i < hi; ++i) {
+    for (auto i = lo; i < hi; ++i) {
         ObjectMemberPool::getGlobalInstance()->releaseTypedBlock(m_data.object.members[i]);
     }
 
