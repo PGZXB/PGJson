@@ -13,19 +13,21 @@ constexpr struct ReadModeType { } ReadMode;
 
 template<SizeType BUF_SIZE = DEFAULT_BUFFER_SIZE>
 class FileStream {
-    static constexpr Enum InvaliFlag = 0U;
-    static constexpr Enum WriteFlag = 1U << 1U;
-    static constexpr Enum ReadFlag = 1U << 2U;
+    static constexpr std::uint8_t InvaliFlag = 0U;
+    static constexpr std::uint8_t WriteFlag = 1U << 1U;
+    static constexpr std::uint8_t ReadFlag = 1U << 2U;
 public:
     FileStream(const char * filename, WriteModeType mode)
-    : m_flags(WriteFlag),
-      m_FILEWrapper(filename, "wb"),
+    : m_FILEWrapper(filename, "wb"),
+      m_flags(WriteFlag),
       m_current(m_buffer) {
+
     }
 
     FileStream(const char * filename, ReadModeType mode)
-    : m_flags(ReadFlag),
-      m_FILEWrapper(filename, "rb") {
+    : m_FILEWrapper(filename, "rb"),
+      m_flags(ReadFlag) {
+
         read();
     }
 
@@ -96,6 +98,8 @@ private:
             m_current = m_buffer;
             if (bytes != BUF_SIZE * PGJSON_CHAR_SIZE) {  // will eof
                 m_bufferEnd = m_buffer + bytes / PGJSON_CHAR_SIZE;
+                m_FILEWrapper.close();  // close
+                m_flags = InvaliFlag;
             }
         }
     }

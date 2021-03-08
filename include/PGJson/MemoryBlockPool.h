@@ -36,7 +36,6 @@ class MemoryBlockPool {  // MemoryBlockPool
 
         BlockInfo(std::uint16_t blockIndexInChunk, std::uint32_t chunkIndexInChunks)
         : next(blockIndexInChunk, chunkIndexInChunks) {
-
         }
 
         bool operator== (const BlockInfo & other) {
@@ -49,15 +48,15 @@ class MemoryBlockPool {  // MemoryBlockPool
         struct Next {
             static constexpr std::uint16_t MAGIC_TAG = 1693689493U % 65535U;
 
-            Next(std::uint16_t bi, std::uint32_t ci)
-            : blockIndexInChunk(bi), chunkIndexInChunks(ci), magicTag(MAGIC_TAG) {
-
+             Next(std::uint16_t bi, std::uint32_t ci)
+            : magicTag(MAGIC_TAG), blockIndexInChunk(bi), chunkIndexInChunks(ci){
             }
 
             std::uint16_t magicTag;
             std::uint16_t blockIndexInChunk;
             std::uint32_t chunkIndexInChunks;
-        } next;
+        };
+        Next next;
     };
 
     PGJSON_STATIC_ASSERT_EX("BLOCK_SIZE should equals to the size of Type", BLOCK_SIZE == sizeof(Type));

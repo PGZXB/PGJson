@@ -13,8 +13,10 @@ class FILEWrapper {
 public:
     FILEWrapper(const char * name, const char * mode);
     ~FILEWrapper() {
-        std::fflush(m_pFILE);
-        close();
+        if (m_pFILE) {
+            std::fflush(m_pFILE);
+            close();
+        }
     }
 
     FILEWrapper(const FILEWrapper &) = delete;
@@ -56,6 +58,7 @@ inline pg::base::json::FILEWrapper::FILEWrapper(const char * name, const char * 
 
 inline void pg::base::json::FILEWrapper::close() {
     if (m_pFILE != nullptr) std::fclose(m_pFILE);
+    m_pFILE = nullptr;
 }
 
 inline pg::base::json::SizeType pg::base::json::FILEWrapper::write(const void * src, SizeType bytes) {
