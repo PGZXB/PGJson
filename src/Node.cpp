@@ -3,6 +3,7 @@
 //
 #include <PGJson/Node.h>
 #include <PGJson/MemoryBlockPool.h>
+#include <PGJson/pgjson.h>
 
 constexpr pg::base::json::SizeType SIZE_OF_NODE = sizeof(pg::base::json::Node);  // sizeof(pg::base::json::Node);
 using NodePool = pg::base::json::MemoryBlockPool<SIZE_OF_NODE, pg::base::json::Node>;
@@ -204,3 +205,7 @@ std::string pg::base::json::Node::objectToDebugString() const {
     return res;
 }
 #endif
+
+void PGJSON_INIT2() {
+    pg::base::json::PGJSON_INNER_NAMESPACE::PGJSON_INIT();
+}

@@ -34,6 +34,7 @@
 
 #if defined(PGJSON_PARSE_ERROR_EXIT) || defined(PGJSON_PARSE_ERROR_RETURN) || defined(PGJSON_PARSE_ERROR_LOG)
     #include <cstdio>
+    #include <cassert>
 #endif
 
 #ifdef PGJSON_PARSE_ERROR_EXIT  // 待实现, assert失败回收资源

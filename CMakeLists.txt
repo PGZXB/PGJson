@@ -8,7 +8,7 @@ add_definitions(-DPGJSON_DEBUG -Wall)
 set(CMAKE_CXX_STANDARD 11)
 
 include_directories(include)
-add_library(PGJson STATIC src/Allocator.cpp src/Node.cpp src/String.cpp src/utils.cpp src/pgjson.cpp)
+add_library(PGJson STATIC src/Allocator.cpp src/Node.cpp src/String.cpp src/utils.cpp src/pgjson.cpp include/PGJson/pgjson.h)
 
 
 project(PGTest)
